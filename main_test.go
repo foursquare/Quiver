@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/apache/thrift/lib/go/thrift"
 	"github.com/dt/httpthrift"
 	"github.com/foursquare/quiver/gen"
 )
@@ -95,7 +96,7 @@ func TestConcurrentRoundTrip(t *testing.T) {
 	wg.Wait()
 }
 
-func BenchmarkTBinaryRT(b *testing.B) {
+func BenchmarkTBinaryHTTP(b *testing.B) {
 	b.StopTimer()
 	srv := DummyServer(b)
 	defer srv.Close()
@@ -115,7 +116,7 @@ func BenchmarkTBinaryRT(b *testing.B) {
 }
 
 // The same as above except we flip the `compact` flag in the client.
-func BenchmarkTCompactRT(b *testing.B) {
+func BenchmarkTCompactHTTP(b *testing.B) {
 	b.StopTimer()
 	srv := DummyServer(b)
 	defer srv.Close()
@@ -134,7 +135,76 @@ func BenchmarkTCompactRT(b *testing.B) {
 	}
 }
 
-func BenchmarkConcurrentRT(b *testing.B) {
+func SetupTrpc(b *testing.B, f thrift.TProtocolFactory) (*TRpcServer, func() *gen.HFileServiceClient) {
+	s, err := NewTRpcServer("localhost:0", gen.NewHFileServiceProcessor(compressed), f)
+
+	if err != nil {
+		b.Fatal(err)
+	} else if err = s.Listen(); err != nil {
+		b.Fatal(err)
+	}
+
+	go func() {
+		if err := s.Serve(); err != nil {
+			b.Fatal(err)
+		}
+	}()
+
+	getClient := func() *gen.HFileServiceClient {
+		conn, err := s.GetClientTransport()
+		if err != nil {
+			b.Fatal(err)
+		}
+		return gen.NewHFileServiceClientFactory(conn, f)
+	}
+	return s, getClient
+}
+
+func BenchmarkTBinaryRaw(b *testing.B) {
+	b.StopTimer()
+
+	s, clientFactory := SetupTrpc(b, thrift.NewTBinaryProtocolFactory(true, true))
+	defer s.Close()
+	client := clientFactory()
+
+	reqs := GetRandomTestReqs("compressed", b.N, 5, 50000)
+
+	b.StartTimer()
+
+	for _, req := range reqs {
+		if res, err := client.GetValuesSingle(req); err != nil {
+			b.Fatal("error: ", err)
+		} else {
+			b.StopTimer()
+			CheckReqAndRes(b, req, res)
+			b.StartTimer()
+		}
+	}
+}
+
+func BenchmarkTCompactRaw(b *testing.B) {
+	b.StopTimer()
+
+	s, clientFactory := SetupTrpc(b, thrift.NewTCompactProtocolFactory())
+	defer s.Close()
+	client := clientFactory()
+
+	reqs := GetRandomTestReqs("compressed", b.N, 5, 50000)
+
+	b.StartTimer()
+
+	for _, req := range reqs {
+		if res, err := client.GetValuesSingle(req); err != nil {
+			b.Fatal("error: ", err)
+		} else {
+			b.StopTimer()
+			CheckReqAndRes(b, req, res)
+			b.StartTimer()
+		}
+	}
+}
+
+func BenchmarkConcurrentHttp(b *testing.B) {
 	b.StopTimer()
 	srv := DummyServer(b)
 	defer srv.Close()
@@ -162,4 +232,27 @@ func BenchmarkConcurrentRT(b *testing.B) {
 	wg.Wait()
 
 	b.StopTimer()
+}
+
+func BenchmarkConcurrentRaw(b *testing.B) {
+	b.StopTimer()
+
+	s, clientFactory := SetupTrpc(b, thrift.NewTCompactProtocolFactory())
+	defer s.Close()
+
+	reqs := GetRandomTestReqs("compressed", b.N, 5, 50000)
+	workers := 5
+	work := make(chan *gen.SingleHFileKeyRequest, workers)
+	var wg sync.WaitGroup
+	wg.Add(workers)
+	for i := 0; i < workers; i++ {
+		go dummyWorker(b, clientFactory(), work, &wg)
+	}
+	b.StartTimer()
+
+	for _, req := range reqs {
+		work <- req
+	}
+	close(work)
+	wg.Wait()
 }
