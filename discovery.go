@@ -21,21 +21,25 @@ type Registrations struct {
 	sync.Mutex
 }
 
-func (r *Registrations) Connect() {
-	if Settings.zk == "" {
-		log.Fatal("Specified discovery path but not zk?", Settings.zk)
+func NewNoopRegistrations() *Registrations {
+	return new(Registrations)
+}
+
+func NewRegistrations(zk curator.CuratorFramework) *Registrations {
+	r := new(Registrations)
+	if zk == nil {
+		log.Fatal("A zookeeper connection is required for service discovery.")
 	}
-
-	retryPolicy := curator.NewExponentialBackoffRetry(time.Second, 3, 15*time.Second)
-
-	r.zk = curator.NewClient(Settings.zk, retryPolicy)
-
-	if err := r.zk.Start(); err != nil {
-		log.Fatal(err)
-	}
+	r.zk = zk
+	return r
 }
 
 func (r *Registrations) Join(hostname, base string, configs []*hfile.CollectionConfig, wait time.Duration) {
+	if r.zk == nil {
+		log.Println("No-op registrations ignoring Join()")
+		return
+	}
+
 	if hostname == "localhost" {
 		log.Fatal("invalid hostname for service discovery registration:", hostname)
 	}
@@ -69,6 +73,10 @@ func (r *Registrations) Join(hostname, base string, configs []*hfile.CollectionC
 }
 
 func (r *Registrations) Leave() {
+	if r.zk == nil {
+		log.Println("No-op registrations ignoring Leave()")
+		return
+	}
 	r.Lock()
 	defer r.Unlock()
 	for _, reg := range r.existing {
@@ -78,5 +86,4 @@ func (r *Registrations) Leave() {
 
 func (r *Registrations) Close() {
 	r.Leave()
-	r.zk.Close()
 }
