@@ -14,6 +14,7 @@ import (
 	_ "expvar"
 	_ "net/http/pprof"
 
+	"github.com/foursquare/curator.go"
 	"github.com/foursquare/fsgo/adminz"
 	"github.com/foursquare/fsgo/report"
 	"github.com/foursquare/quiver/hfile"
@@ -75,6 +76,8 @@ Usage: %s [options] col1=path1 col2=path2 ...
 	return flag.Args()
 }
 
+var zk curator.CuratorFramework
+
 func main() {
 	fmt.Println("max procs:", runtime.GOMAXPROCS(-1))
 	t := time.Now()
@@ -93,10 +96,20 @@ func main() {
 		hostname = "localhost"
 	}
 
-	registrations := new(Registrations)
+	if Settings.zk != "" {
+		retryPolicy := curator.NewExponentialBackoffRetry(time.Second, 3, 15*time.Second)
+		zk = curator.NewClient(Settings.zk, retryPolicy)
+
+		if err := zk.Start(); err != nil {
+			log.Fatal(err)
+		}
+		defer zk.Close()
+	}
+
+	registrations := NewNoopRegistrations()
 
 	if Settings.discoveryPath != "" && !Settings.downloadOnly {
-		registrations.Connect()
+		registrations = NewRegistrations(zk)
 		defer registrations.Close()
 	}
 
