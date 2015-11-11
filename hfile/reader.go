@@ -14,6 +14,7 @@ import (
 
 	//"github.com/golang/snappy"
 	"github.com/cockroachdb/c-snappy"
+	"unicode/utf8"
 )
 
 type Reader struct {
@@ -24,11 +25,16 @@ type Reader struct {
 	majorVersion uint32
 	minorVersion uint32
 
+	FileInfo
 	Trailer
 	index []Block
 
 	scannerCache  chan *Scanner
 	iteratorCache chan *Iterator
+}
+
+type FileInfo struct {
+	InfoFields map[string]string  // Human-readable fields read from the FileInfo block.
 }
 
 type Trailer struct {
@@ -71,6 +77,11 @@ func NewReaderFromConfig(cfg CollectionConfig) (*Reader, error) {
 	hfile.minorVersion = v >> 24
 
 	err := hfile.readTrailer(hfile.data)
+	if err != nil {
+		return nil, err
+	}
+
+	err = hfile.readFileInfo(hfile.data)
 	if err != nil {
 		return nil, err
 	}
@@ -253,4 +264,70 @@ func (r *Reader) GetIterator() *Iterator {
 	default:
 		return NewIterator(r)
 	}
+}
+
+// TODO(benjy): Write tests for this, once the writer supports writing the FileInfo block.
+func (r *Reader) readFileInfo(data []byte) (err error) {
+	type outOfBounds struct {}
+
+	defer func() {
+		if r := recover(); r != nil {
+			switch r.(type) {
+			case outOfBounds:
+				err = errors.New("Tried to read past end of FileInfo block!")
+			default:
+				panic(r)
+			}
+		}
+	}()
+
+	r.FileInfo.InfoFields = make(map[string]string)
+
+	fileInfoBlockEnd := r.DataIndexOffset
+
+	p := r.FileInfoOffset
+
+	// Safely move the read pointer.
+	advance := func(increment int) {
+		p += uint64(increment)
+		if p > fileInfoBlockEnd {
+			panic(new(outOfBounds))
+		}
+	}
+
+	// Grab a variable-length sequence of bytes from the buffer.
+	varLenBytes := func() []byte {
+		// Read the length of the sequence, as a varint.
+		seqLen, s := vintAndLen(data[p:])
+		advance(s)
+		// Read the sequence itself.
+		seq := data[p : p + uint64(seqLen)]
+		advance(seqLen)
+		return seq
+	}
+
+	// Heuristic to figure out how to print the value in a hopefully human-readable way.
+	printableValue := func(buf []byte) string {
+		if len(buf) == 4 {
+			return fmt.Sprintf("%d", binary.BigEndian.Uint32(buf))
+		} else if len(buf) == 8 {
+			return fmt.Sprintf("%d", binary.BigEndian.Uint64(buf))
+		} else if utf8.Valid(buf) {
+			return string(buf)
+		} else {
+			return fmt.Sprintf("0x%x", buf)
+		}
+	}
+
+	entryCount := binary.BigEndian.Uint32(data[p:])
+	advance(4)
+
+	for i := uint32(0); i < entryCount; i++ {
+		key := string(varLenBytes())
+		advance(1)  // Skip the one-byte 'id' field.  We don't care about it.
+		val := printableValue(varLenBytes())
+		fmt.Printf("%s=%s\n", key, val)
+		r.FileInfo.InfoFields[key] = val
+	}
+	return nil
 }
