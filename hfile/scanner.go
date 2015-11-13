@@ -7,6 +7,8 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"log"
+	"sync/atomic"
+	"time"
 )
 
 type Scanner struct {
@@ -65,7 +67,11 @@ func (s *Scanner) blockFor(key []byte) ([]byte, error, bool) {
 }
 
 func (s *Scanner) GetFirst(key []byte) ([]byte, error, bool) {
+	t := time.Now().UnixNano()
 	data, err, ok := s.blockFor(key)
+	if s.reader.Usage != nil {
+		atomic.AddInt64(&s.reader.Usage.scannerBlockForSumNs, time.Now().UnixNano()-t)
+	}
 
 	if !ok {
 		if s.reader.Debug {
@@ -77,15 +83,25 @@ func (s *Scanner) GetFirst(key []byte) ([]byte, error, bool) {
 	if s.reader.Debug {
 		log.Printf("[Scanner.GetFirst] Searching Block for key: %s (pos: %d)\n", hex.EncodeToString(key), *s.pos)
 	}
+
+	t = time.Now().UnixNano()
 	value, _, found := s.getValuesFromBuffer(data, s.pos, key, true)
+	if s.reader.Usage != nil {
+		atomic.AddInt64(&s.reader.Usage.scannerGetValuesSumNs, time.Now().UnixNano()-t)
+	}
 	if s.reader.Debug {
 		log.Printf("[Scanner.GetFirst] After pos pos: %d\n", *s.pos)
 	}
+
 	return value, nil, found
 }
 
 func (s *Scanner) GetAll(key []byte) ([][]byte, error) {
+	t := time.Now().UnixNano()
 	data, err, ok := s.blockFor(key)
+	if s.reader.Usage != nil {
+		atomic.AddInt64(&s.reader.Usage.scannerBlockForSumNs, time.Now().UnixNano()-t)
+	}
 
 	if !ok {
 		if s.reader.Debug {
@@ -94,7 +110,11 @@ func (s *Scanner) GetAll(key []byte) ([][]byte, error) {
 		return nil, err
 	}
 
+	t = time.Now().UnixNano()
 	_, found, _ := s.getValuesFromBuffer(data, s.pos, key, false)
+	if s.reader.Usage != nil {
+		atomic.AddInt64(&s.reader.Usage.scannerGetValuesSumNs, time.Now().UnixNano()-t)
+	}
 	return found, err
 }
 

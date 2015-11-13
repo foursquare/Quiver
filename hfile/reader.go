@@ -11,13 +11,22 @@ import (
 	"io"
 	"log"
 	"sort"
-
-	//"github.com/golang/snappy"
+	"time"
 	"unicode/utf8"
 
 	"github.com/AndreasBriese/bbloom"
 	"github.com/cockroachdb/c-snappy"
+	"github.com/foursquare/fsgo/report"
 )
+
+type UsageMetics struct {
+	scannerBlockForSumNs  int64
+	scannerGetValuesSumNs int64
+
+	KeysRequested report.Histogram
+	KeysBloomSkip report.Histogram
+	KeysReturned  report.Histogram
+}
 
 type Reader struct {
 	CollectionConfig
@@ -36,6 +45,10 @@ type Reader struct {
 
 	disableBloom bool
 	bloom        *bbloom.Bloom
+
+	stats *report.Recorder
+
+	Usage *UsageMetics
 }
 
 type FileInfo struct {
@@ -98,6 +111,24 @@ func NewReaderFromConfig(cfg CollectionConfig) (*Reader, error) {
 	hfile.scannerCache = make(chan *Scanner, 5)
 	hfile.iteratorCache = make(chan *Iterator, 5)
 	return hfile, nil
+}
+
+func (r *Reader) ReportStats(s *report.Recorder) *Reader {
+	r.stats = s
+	r.Usage = new(UsageMetics)
+
+	r.Usage.KeysRequested = r.stats.GetHistogram("reqs.keys-requested")
+	r.Usage.KeysBloomSkip = r.stats.GetHistogram("reqs.bloom-skipped")
+	r.Usage.KeysReturned = r.stats.GetHistogram("reqs.keys-returned")
+
+	r.stats.RegisterGuageValue("scanner.indexsearch-vs-blockscan", time.Minute, func() float64 {
+		if r.Usage.scannerGetValuesSumNs > 0 {
+			return float64(r.Usage.scannerBlockForSumNs) / float64(r.Usage.scannerGetValuesSumNs)
+		}
+		return 0.0
+	})
+
+	return r
 }
 
 func (r *Reader) PrintDebugInfo(out io.Writer, includeStartKeys int) {

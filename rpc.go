@@ -18,7 +18,11 @@ import (
 )
 
 func WrapHttpRpcHandler(cs *hfile.CollectionSet, stats *report.Recorder) *httpthrift.ThriftOverHTTPHandler {
-	return httpthrift.NewThriftOverHTTPHandler(gen.NewHFileServiceProcessor(&ThriftRpcImpl{cs}), stats)
+	return httpthrift.NewThriftOverHTTPHandler(gen.NewHFileServiceProcessor(NewThriftRpcImpl(cs, stats)), stats)
+}
+
+func NewThriftRpcImpl(cs *hfile.CollectionSet, stats *report.Recorder) *ThriftRpcImpl {
+	return &ThriftRpcImpl{cs}
 }
 
 type ThriftRpcImpl struct {
@@ -29,10 +33,16 @@ func (cs *ThriftRpcImpl) GetValuesSingle(req *gen.SingleHFileKeyRequest) (r *gen
 	if Settings.debug {
 		log.Printf("[GetValuesSingle] %s (%d keys)\n", *req.HfileName, len(req.SortedKeys))
 	}
+
 	hfile, err := cs.ReaderFor(*req.HfileName)
 	if err != nil {
 		return nil, err
 	}
+
+	if hfile.Usage != nil {
+		hfile.Usage.KeysRequested.Update(int64(len(req.SortedKeys)))
+	}
+
 	reader := hfile.GetScanner()
 	// TODO: clients should request strict during dev/testing?
 	reader.EnforceKeyOrder = false
@@ -68,6 +78,11 @@ func (cs *ThriftRpcImpl) GetValuesSingle(req *gen.SingleHFileKeyRequest) (r *gen
 				res.Values[int32(idx)] = value
 			}
 		}
+	}
+
+	if hfile.Usage != nil {
+		hfile.Usage.KeysBloomSkip.Update(int64(found))
+		hfile.Usage.KeysReturned.Update(int64(found))
 	}
 
 	if Settings.debug {

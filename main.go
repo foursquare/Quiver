@@ -32,6 +32,8 @@ type SettingDefs struct {
 
 	bloom int
 
+	detailedStats bool
+
 	mlock bool
 
 	configJsonUrl string
@@ -51,6 +53,8 @@ func readSettings() []string {
 	flag.BoolVar(&s.debug, "debug", false, "print more output")
 
 	flag.IntVar(&s.bloom, "bloom", 0, "bloom filter wrong-positive % (or 0 to disable): lower numbers use more RAM but filter more queries.")
+
+	flag.BoolVar(&s.detailedStats, "detailed-stats", false, "collect and report detailed metrics (time spent searching block, index, etc)")
 
 	flag.BoolVar(&s.downloadOnly, "download-only", false, "exit after downloading remote files to local cache.")
 
@@ -121,6 +125,14 @@ func main() {
 	if Settings.downloadOnly {
 		stats.FlushNow()
 		return
+	}
+
+	if Settings.detailedStats {
+		log.Println("Enabling detailed metrics collection.")
+
+		for _, c := range cs.Collections {
+			c.ReportStats(stats)
+		}
 	}
 
 	if Settings.bloom > 0 {

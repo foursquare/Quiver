@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"sort"
 
+	"github.com/foursquare/fsgo/report"
 	"github.com/foursquare/quiver/gen"
 	"github.com/foursquare/quiver/hfile"
 	"github.com/stretchr/testify/assert"
@@ -30,12 +31,12 @@ func Setup(t hasFatal) {
 	if cs, err := hfile.TestdataCollectionSet("uncompressed", maxKey, false, hfile.CopiedToMem); err != nil {
 		t.Fatal(err)
 	} else {
-		uncompressed = &ThriftRpcImpl{cs}
+		uncompressed = NewThriftRpcImpl(cs, report.NewRecorder())
 	}
 	if cs, err := hfile.TestdataCollectionSet("compressed", maxKey, true, hfile.CopiedToMem); err != nil {
 		t.Fatal(err)
 	} else {
-		compressed = &ThriftRpcImpl{cs}
+		compressed = NewThriftRpcImpl(cs, report.NewRecorder())
 	}
 }
 
@@ -43,7 +44,7 @@ func SetupMapped(t hasFatal) {
 	if cs, err := hfile.TestdataCollectionSet("compressed", maxKey, true, hfile.MemlockFile); err != nil {
 		t.Fatal(err)
 	} else {
-		compressedMapped = &ThriftRpcImpl{cs}
+		compressedMapped = NewThriftRpcImpl(cs, report.NewRecorder())
 	}
 }
 

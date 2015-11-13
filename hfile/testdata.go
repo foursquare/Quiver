@@ -6,6 +6,8 @@ import (
 	"encoding/binary"
 	"fmt"
 	"os"
+
+	"github.com/foursquare/fsgo/report"
 )
 
 func MockKeyInt(i int) []byte {
@@ -79,5 +81,15 @@ func TestdataCollectionSet(name string, count int, compress bool, load LoadMetho
 	} else if err != nil {
 		return nil, err
 	}
-	return LoadCollections([]*CollectionConfig{{name, path, path, nil, load, false, name, "", "", ""}}, os.TempDir(), false, nil)
+
+	cfg := []*CollectionConfig{{name, path, path, nil, load, false, name, "", "", ""}}
+	if cs, err := LoadCollections(cfg, os.TempDir(), false, nil); err != nil {
+		return nil, err
+	} else {
+		s := report.NewRecorder()
+		for _, c := range cs.Collections {
+			c.ReportStats(s)
+		}
+		return cs, nil
+	}
 }

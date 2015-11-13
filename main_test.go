@@ -10,12 +10,13 @@ import (
 
 	"github.com/apache/thrift/lib/go/thrift"
 	"github.com/foursquare/fsgo/net/httpthrift"
+	"github.com/foursquare/fsgo/report"
 	"github.com/foursquare/quiver/gen"
 )
 
 func DummyServer(t hasFatal, handler *ThriftRpcImpl) *httptest.Server {
 	Setup(t)
-	return httptest.NewServer(WrapHttpRpcHandler(handler.CollectionSet, nil))
+	return httptest.NewServer(WrapHttpRpcHandler(handler.CollectionSet, report.NewRecorder()))
 }
 
 func DummyClient(url string, compact bool) *gen.HFileServiceClient {
