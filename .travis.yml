@@ -4,7 +4,7 @@ go:
 sudo: false
 install:
   - export CXX="g++-4.8" CC="gcc-4.8" CPP="g++-4.8"
-  - go get -v -t ./...
+  - go get -d -v -t ./...
 addons:
   apt:
     sources:
