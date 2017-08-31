@@ -68,12 +68,6 @@ To build Quiver, run:
 
 `go build`
 
-## C-Snappy and c++11
-The c-snappy dependency uses `-sdt=c++11`, but older gcc versions expect `-std=c++0x`. 
-Override `CXX`, `CPP` and `CC` to point to a newer GCC if your system version is too old.
-
-_Foursquare engineers_: add [this](https://gist.github.com/dt/2befc993d330fe5914ef6283c973d1d8) to your `bashrc`
-
 ## GoImports
 Quiver uses `goimports` formatting (which groups stdlib imports).
 
