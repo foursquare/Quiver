@@ -21,14 +21,6 @@
 			"revisionTime": "2016-09-24T22:28:19Z"
 		},
 		{
-			"checksumSHA1": "8q9mc9QQLyEvZiIg+1JkTN4AHF0=",
-			"origin": "github.com/foursquare/c-snappy",
-			"path": "github.com/cockroachdb/c-snappy",
-			"revision": "06f3a271875696bf6a20ecd60b3d96c0d1fdc6b8",
-			"revisionTime": "2016-06-07T19:43:12Z",
-			"tree": true
-		},
-		{
 			"checksumSHA1": "VhnlgU/Rwo7Q5VVDg9ZHfqQ6xMk=",
 			"path": "github.com/curator-go/curator",
 			"revision": "3844cf4b76fd7c67981c6be153cadd9d054ea03c",
@@ -71,10 +63,10 @@
 			"revisionTime": "2017-05-09T15:16:33Z"
 		},
 		{
-			"checksumSHA1": "W+E/2xXcE1GmJ0Qb784ald0Fn6I=",
+			"checksumSHA1": "p/8vSviYF91gFflhrt5vkyksroo=",
 			"path": "github.com/golang/snappy",
-			"revision": "d9eb7a3d35ec988b8585d4a0068e462c27d28380",
-			"revisionTime": "2016-05-29T05:00:41Z"
+			"revision": "553a641470496b2327abcac10b36396bd98e45c9",
+			"revisionTime": "2017-02-15T23:32:05Z"
 		},
 		{
 			"checksumSHA1": "LuFv4/jlrmFNnDb/5SCSEPAM9vU=",
