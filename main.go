@@ -1,4 +1,5 @@
 // Copyright (C) 2015 Foursquare Labs Inc.
+//go:generate sh -c "./genver.sh > version.go"
 
 package main
 
@@ -20,9 +21,6 @@ import (
 	"github.com/foursquare/fsgo/report"
 	"github.com/foursquare/quiver/hfile"
 )
-
-var version string = "HEAD?"
-var buildTime string = "unknown?"
 
 type SettingDefs struct {
 	port    int

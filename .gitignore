@@ -34,3 +34,6 @@ _testmain.go
 
 # vendoring
 /vendor/*/
+
+# go:generate
+version.go

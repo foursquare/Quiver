@@ -1,19 +1,17 @@
-VERSION=`git describe --always`
-BUILD_TIME=`date`, by `whoami`, on `hostname`
-
-LDFLAGS=-X \"main.version=${VERSION}\" -X \"main.buildTime=${BUILD_TIME}\"
-
 build:
 	go get github.com/kardianos/govendor
 	govendor sync
+	go generate
 	go test ./...
-	go build -ldflags "${LDFLAGS}"
+	go build
 
 benchmark:
+	go generate
 	go test -bench . -benchtime 5s -test.benchmem
 
 install: uninstall
-	go install -ldflags "${LDFLAGS}"
+	go generate
+	go install
 
 uninstall:
 	rm ${GOPATH}/bin/quiver
