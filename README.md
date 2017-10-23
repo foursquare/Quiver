@@ -50,7 +50,7 @@ You can `go get github.com/foursquare/quiver/cmd/load` to install it in your `$G
 # Contributing
 
 ## Go Version and PATH
-Quiver is tested and developed assuming Go 1.8 and `$GOPATH/bin` is on PATH.
+Quiver is tested and developed assuming Go 1.9 and `$GOPATH/bin` is on PATH.
 
 _Foursquare engineers_: add [this](https://gist.github.com/dt/12eea95cc054a2a6018f2ca839e146b9) to your `bashrc`
 

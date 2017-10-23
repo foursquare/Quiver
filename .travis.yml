@@ -1,6 +1,6 @@
 language: go
 go:
-  - 1.8
+  - 1.9
 sudo: false
 install:
   - export CXX="g++-4.8" CC="gcc-4.8" CPP="g++-4.8"
