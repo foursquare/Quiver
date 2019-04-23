@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/foursquare/fsgo/report"
+	"github.com/fujiwara/shapeio"
 )
 
 type LoadMethod int
@@ -60,7 +61,7 @@ type CollectionSet struct {
 	cache       string
 }
 
-func LoadCollections(collections []*CollectionConfig, cache string, downloadOnly bool, stats *report.Recorder) (*CollectionSet, error) {
+func LoadCollections(collections []*CollectionConfig, cache string, downloadOnly bool, bytesLimit float64, stats *report.Recorder) (*CollectionSet, error) {
 	cs := new(CollectionSet)
 	cs.Collections = make(map[string]*Reader)
 
@@ -68,7 +69,7 @@ func LoadCollections(collections []*CollectionConfig, cache string, downloadOnly
 		return nil, fmt.Errorf("no collections to load!")
 	}
 
-	if err := downloadCollections(collections, cache, stats, !downloadOnly); err != nil {
+	if err := downloadCollections(collections, cache, stats, !downloadOnly, bytesLimit); err != nil {
 		log.Println("[LoadCollections] Error fetching collections: ", err)
 		return nil, err
 	}
@@ -93,7 +94,7 @@ func LoadCollections(collections []*CollectionConfig, cache string, downloadOnly
 	return cs, nil
 }
 
-func downloadCollections(collections []*CollectionConfig, cache string, stats *report.Recorder, canBypassDisk bool) error {
+func downloadCollections(collections []*CollectionConfig, cache string, stats *report.Recorder, canBypassDisk bool, bytesLimit float64) error {
 	if stats != nil {
 		t := time.Now()
 		defer stats.TimeSince("startup.download", t)
@@ -113,7 +114,7 @@ func downloadCollections(collections []*CollectionConfig, cache string, stats *r
 			} else if !os.IsNotExist(err) {
 				return err
 			} else {
-				err = fetch(cfg, canBypassDisk)
+				err = fetch(cfg, canBypassDisk, bytesLimit)
 				if err != nil {
 					return err
 				}
@@ -133,7 +134,7 @@ func localCache(url, cache string) string {
 	return path.Join(cache, name)
 }
 
-func fetch(cfg *CollectionConfig, canBypassDisk bool) error {
+func fetch(cfg *CollectionConfig, canBypassDisk bool, bytesLimit float64) error {
 	log.Printf("[FetchRemote] Fetching %s: %s -> %s.", cfg.Name, cfg.SourcePath, cfg.LocalPath)
 
 	destDir := filepath.Dir(cfg.LocalPath)
@@ -177,7 +178,15 @@ func fetch(cfg *CollectionConfig, canBypassDisk bool) error {
 		buf.ReadFrom(resp.Body)
 		return fmt.Errorf("HTTP error fetching (%s): %s\n", resp.Status, buf.String())
 	}
+
 	defer resp.Body.Close()
+	var respBody io.Reader = resp.Body
+
+	if bytesLimit > 0 {
+		r := shapeio.NewReader(resp.Body)
+		r.SetRateLimit(bytesLimit)
+		respBody = r
+	}
 
 	fp, err := ioutil.TempFile(destDir, "hfile-downloading-")
 	if err != nil {
@@ -200,7 +209,7 @@ func fetch(cfg *CollectionConfig, canBypassDisk bool) error {
 		buf := offheapMalloc(prealloc)
 		cfg.cachedContent = &buf
 
-		if read, err := io.ReadFull(resp.Body, buf); err != nil {
+		if read, err := io.ReadFull(respBody, buf); err != nil {
 			log.Println("[FetchRemote] Error fetching", cfg.Name, err)
 			return err
 		} else {
@@ -213,7 +222,7 @@ func fetch(cfg *CollectionConfig, canBypassDisk bool) error {
 			return err
 		}
 	} else {
-		if sz, err = io.Copy(fp, resp.Body); err != nil {
+		if sz, err = io.Copy(fp, respBody); err != nil {
 			log.Fatal("[FetchRemote] Error fetching to disk", cfg.Name, err)
 			return err
 		}

@@ -63,6 +63,12 @@
 			"revisionTime": "2017-05-09T15:16:33Z"
 		},
 		{
+			"checksumSHA1": "Om1yAM4c5mXN8PFUjH2rgFObzrs=",
+			"path": "github.com/fujiwara/shapeio",
+			"revision": "c073257dd7455637a1fa51201a9865a14ecb7f20",
+			"revisionTime": "2017-06-02T07:21:23Z"
+		},
+		{
 			"checksumSHA1": "p/8vSviYF91gFflhrt5vkyksroo=",
 			"path": "github.com/golang/snappy",
 			"revision": "553a641470496b2327abcac10b36396bd98e45c9",
@@ -121,6 +127,18 @@
 			"path": "github.com/stretchr/testify/suite",
 			"revision": "4d4bfba8f1d1027c4fdbe371823030df51419987",
 			"revisionTime": "2017-01-30T11:31:45Z"
+		},
+		{
+			"checksumSHA1": "GtamqiJoL7PGHsN454AoffBFMa8=",
+			"path": "golang.org/x/net/context",
+			"revision": "61147c48b25b599e5b561d2e9c4f3e1ef489ca41",
+			"revisionTime": "2017-03-19T02:15:06Z"
+		},
+		{
+			"checksumSHA1": "HoCvrd3hEhsFeBOdEw7cbcfyk50=",
+			"path": "golang.org/x/time/rate",
+			"revision": "fbb02b2291d28baffd63558aa44b4b56f178d650",
+			"revisionTime": "2018-04-12T16:56:04Z"
 		}
 	],
 	"rootPath": "github.com/foursquare/quiver"

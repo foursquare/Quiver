@@ -32,7 +32,8 @@ type SettingDefs struct {
 
 	debug bool
 
-	bloom int
+	bloom      int
+	bytesLimit float64
 
 	mlock  bool
 	onDisk bool
@@ -56,6 +57,7 @@ func readSettings() []string {
 	flag.BoolVar(&s.debug, "debug", false, "print more output")
 
 	flag.IntVar(&s.bloom, "bloom", 0, "bloom filter wrong-positive % (or 0 to disable): lower numbers use more RAM but filter more queries.")
+	flag.Float64Var(&s.bytesLimit, "rate-limit-bytes", 0, "limit downloads to bytes/sec, default is no limit ")
 
 	flag.BoolVar(&s.downloadOnly, "download-only", false, "exit after downloading remote files to local cache.")
 
@@ -121,7 +123,7 @@ func main() {
 
 	log.Println("Loading collections...")
 
-	cs, err := hfile.LoadCollections(configs, Settings.cachePath, Settings.downloadOnly, stats)
+	cs, err := hfile.LoadCollections(configs, Settings.cachePath, Settings.downloadOnly, Settings.bytesLimit, stats)
 
 	if err != nil {
 		log.Fatal(err)
